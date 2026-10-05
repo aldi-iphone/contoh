@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ular Pengikut Kursor</title>
+
+  <!-- CSS: mengatur tampilan halaman -->
+  <style>
+    body {
+      margin: 0;                /* hilangkan jarak tepi bawaan browser */
+      background: #1a1a2e;      /* warna latar: biru tua */
+      overflow: hidden;         /* hilangkan scrollbar */
+    }
+    canvas {
+      display: block;           /* hilangkan celah kecil di bawah kanvas */
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Kanvas = "kertas gambar" tempat ular digambar -->
+  <canvas id="kanvas"></canvas>
+
+  <!-- JavaScript: otak dan animasinya -->
+  <script>
+    // ============================================
+    // LANGKAH 1: Siapkan kanvas
+    // ============================================
+    const kanvas = document.getElementById("kanvas");
+    const ctx = kanvas.getContext("2d"); // "ctx" = pensil untuk menggambar
+
+    function aturUkuran() {
+      kanvas.width = window.innerWidth;    // lebar kanvas = lebar jendela
+      kanvas.height = window.innerHeight;  // tinggi kanvas = tinggi jendela
+    }
+    aturUkuran();
+    window.addEventListener("resize", aturUkuran); // ukuran ikut berubah saat jendela diubah
+
+    // ============================================
+    // LANGKAH 2: Catat posisi kursor
+    // ============================================
+    const mouse = { x: kanvas.width / 2, y: kanvas.height / 2 };
+
+    window.addEventListener("mousemove", function (e) {
+      mouse.x = e.clientX; // posisi kiri-kanan kursor
+      mouse.y = e.clientY; // posisi atas-bawah kursor
+    });
+
+    // ============================================
+    // LANGKAH 3: Buat tubuh ular
+    // ============================================
+    const JUMLAH_RUAS = 30;  // makin besar, makin panjang ularnya
+    const JARAK = 14;        // jarak antar ruas (px)
+    const ular = [];
+
+    for (let i = 0; i < JUMLAH_RUAS; i++) {
+      ular.push({ x: mouse.x, y: mouse.y }); // semua ruas mulai dari tengah layar
+    }
+    // ular[0] = kepala, ular[29] = ujung ekor
+
+    // ============================================
+    // LANGKAH 4: Gerakkan ular (dipanggil terus-menerus)
+    // ============================================
+    function gerak() {
+      // a) Kepala mendekati kursor sedikit demi sedikit (15% dari jarak)
+      //    Ini yang membuat gerakannya halus, tidak "loncat"
+      const kepala = ular[0];
+      kepala.x += (mouse.x - kepala.x) * 0.15;
+      kepala.y += (mouse.y - kepala.y) * 0.15;
+
+      // b) Setiap ruas mengikuti ruas di depannya
+      for (let i = 1; i < ular.length; i++) {
+        const depan = ular[i - 1];
+        const ruas = ular[i];
+
+        const dx = depan.x - ruas.x;
+        const dy = depan.y - ruas.y;
+        const jarak = Math.hypot(dx, dy); // jarak lurus ke ruas depan
+
+        // Kalau terlalu jauh, tarik ruas ini mendekat sampai jaraknya pas
+        if (jarak > JARAK) {
+          const sudut = Math.atan2(dy, dx); // arah menuju ruas depan
+          ruas.x = depan.x - Math.cos(sudut) * JARAK;
+          ruas.y = depan.y - Math.sin(sudut) * JARAK;
+        }
+      }
+    }
+
+    // ============================================
+    // LANGKAH 5: Gambar ular
+    // ============================================
+    function gambar() {
+      // Hapus gambar frame sebelumnya
+      ctx.clearRect(0, 0, kanvas.width, kanvas.height);
+
+      // Gambar dari ekor ke kepala, supaya kepala tampil paling atas
+      for (let i = ular.length - 1; i >= 0; i--) {
+        const ruas = ular[i];
+        const radius = 4 + 12 * (1 - i / ular.length); // kepala besar, ekor kecil
+
+        ctx.beginPath();
+        ctx.arc(ruas.x, ruas.y, radius, 0, Math.PI * 2); // lingkaran
+        ctx.fillStyle = "hsl(" + (140 - i * 2) + ", 70%, 50%)"; // warna bergradasi
+        ctx.fill();
+      }
+
+      gambarMata();
+    }
+
+    // Mata di kepala, menghadap ke arah gerak
+    function gambarMata() {
+      const kepala = ular[0];
+      const leher = ular[1];
+      const sudut = Math.atan2(kepala.y - leher.y, kepala.x - leher.x);
+
+      // Dua mata: satu di kiri arah hadap, satu di kanan
+      const sisi = [-0.6, 0.6];
+      for (let i = 0; i < sisi.length; i++) {
+        const mx = kepala.x + Math.cos(sudut + sisi[i]) * 9;
+        const my = kepala.y + Math.sin(sudut + sisi[i]) * 9;
+
+        // Bagian putih mata
+        ctx.beginPath();
+        ctx.arc(mx, my, 4, 0, Math.PI * 2);
+        ctx.fillStyle = "white";
+        ctx.fill();
+
+        // Biji mata hitam
+        ctx.beginPath();
+        ctx.arc(mx + Math.cos(sudut) * 1.5, my + Math.sin(sudut) * 1.5, 2, 0, Math.PI * 2);
+        ctx.fillStyle = "black";
+        ctx.fill();
+      }
+    }
+
+    // ============================================
+    // LANGKAH 6: Jalankan animasi terus-menerus
+    // ============================================
+    function animasi() {
+      gerak();                          // hitung posisi baru
+      gambar();                         // gambar posisi baru
+      requestAnimationFrame(animasi);   // ulangi di frame berikutnya (~60x per detik)
+    }
+    animasi();
+  </script>
+</body>
+</html>
